@@ -2,6 +2,7 @@
 #define CUARENA_CUH
 
 #include <cuda.h>
+#include <cuda_runtime.h>
 
 #include <cassert>
 #include <cstddef>
@@ -121,6 +122,8 @@ struct arena
 
     [[nodiscard]] constexpr size_type size_bytes() const noexcept { return _alloc_position; }
 
+    [[nodiscard]] constexpr byte_type *data() noexcept { return _start_address; }
+
 private:
     static constexpr auto DEFAULT_RESERVED_SIZE = 4_GB;
 
@@ -184,8 +187,9 @@ arena::arena(CUcontext context, size_type capacity, size_type alignment)
     };
     CU_CHECK(cuMemGetAllocationGranularity(&_minimum_commit_size, &_prop, CU_MEM_ALLOC_GRANULARITY_MINIMUM));
 
+    _reserved_size = align_to(capacity, _minimum_commit_size);
     CUdeviceptr addr;
-    CU_CHECK(cuMemAddressReserve(&addr, align_to(capacity, _minimum_commit_size), _alignment, 0, 0));
+    CU_CHECK(cuMemAddressReserve(&addr, _reserved_size, _alignment, 0, 0));
     _start_address = (byte_type *)addr;
 }
 
@@ -203,7 +207,7 @@ memblk arena::allocate(size_type n_bytes)
     // out of memory? -> commit
     if (_alloc_position + alloc_size > _commit_position) {
         size_type handle = commit_memory(alloc_size);
-        _alloc_info.push_back({ handle, alloc_size });
+        // _alloc_info.push_back({ handle, alloc_size });
     }
 
     byte_type *addr = &_start_address[_alloc_position];
@@ -314,15 +318,143 @@ arena::size_type arena::commit_memory(size_type n_bytes)
     void *current_commit_end = _start_address + _commit_position;
 
     CUmemGenericAllocationHandle handle;
-    CU_CHECK(cuMemCreate(&handle, n_bytes, &_prop, 0));
+    CU_CHECK(cuMemCreate(&handle, commit_size, &_prop, 0));
     CU_CHECK(cuCtxSynchronize());
     CU_CHECK(cuMemMap((CUdeviceptr)current_commit_end, commit_size, 0, handle, 0));
 
     // enable access to memory mapping
     CU_CHECK(cuMemSetAccess((CUdeviceptr)current_commit_end, commit_size, &access_desc, 1));
 
+    _alloc_info.push_back({ handle, commit_size });
     _commit_position += commit_size;
     return handle;
 }
+
+
+
+// A growing pool allocator with fixed size slots
+struct pool
+{
+    using size_type = std::size_t;
+
+    struct description
+    {
+        size_type slot_size;
+        size_type capacity;
+        size_type alignment;
+    };
+
+    pool(CUcontext context, description info)
+        : _arena(context, info.capacity, info.alignment)
+        , _slot_size(align_to(info.slot_size, info.alignment))
+        , _head(nullptr)
+    {
+        assert(_slot_size >= sizeof(node) && "slot size too small");
+
+        memblk blk = _arena.allocate(info.capacity);
+        // clear();
+        // push_range_onto_free_list(blk.data(), blk.size() / _slot_size);
+        push_range_onto_free_list(blk);
+    }
+
+    [[nodiscard]] memblk allocate()
+    {
+        node *old_head = _head;
+        if (old_head == nullptr) {
+
+            // grow pool using arena
+            memblk blk = _arena.allocate(_slot_size); // TODO: what if we free and allocate instead of reallocating? Have option to fail on this event
+
+            // for (size_type i = 0; i < blk.size() / _slot_size; ++i) {
+            //     push_onto_free_list(blk.data() + i * _slot_size);
+            // }
+            // push_range_onto_free_list(blk.data(), blk.size() / _slot_size);
+            push_range_onto_free_list(blk);
+        }
+
+        _head = _head->next;
+
+        return { reinterpret_cast<memblk::value_type *>(old_head), _slot_size };
+    }
+
+    void deallocate(memblk blk)
+    {
+        assert(blk.size() == _slot_size && "invalid block size");
+        assert(owns(blk) && "block not owned by pool");
+
+        push_onto_free_list(blk.data());
+    }
+
+    bool owns(memblk blk)
+    {
+        return _arena.owns(blk);
+    }
+
+    void clear()
+    {
+        // for (size_type i = 0; i < slot_count(); ++i) {
+        //     push_onto_free_list(_arena.data() + i * _slot_size);
+        // }
+        push_range_onto_free_list({ _arena.data(), _arena.size_bytes() });
+    }
+
+    struct node
+    {
+        node *next;
+    };
+
+private:
+    size_type slot_count()
+    {
+        return _arena.size_bytes() / _slot_size;
+    }
+
+    void push_range_onto_free_list(memblk blk)
+    {
+        size_type count         = blk.size() / _slot_size;
+        memblk::value_type *ptr = blk.data();
+        for (size_type i = 0; i < count; ++i) {
+            push_onto_free_list(ptr + i * _slot_size);
+        }
+    }
+
+    void push_onto_free_list(memblk::value_type *ptr);
+    // {
+    //     node *n = reinterpret_cast<node *>(ptr);
+    //     // CU_CHECK(cuMemcpyDtoD((CUdeviceptr)n->next, (CUdeviceptr)_head, sizeof(CUdeviceptr)));
+    //     // CU_CHECK(cuMemcpyDtoD((CUdeviceptr)&_head, (CUdeviceptr)&n, sizeof(CUdeviceptr)));
+    //     // n->next = _head;
+    //     // _head   = n;
+    //
+    //     push_onto_free_list_kernel<<<1, 1>>>(_head, n);
+    // }
+
+    arena _arena;
+    size_type _slot_size;
+    node *_head;
+};
+// struct pool;
+
+// struct pool::node;
+
+__global__ void push_onto_free_list_kernel(pool::node *head, pool::node *n)
+{
+    // if (threadIdx.x == 0 && blockIdx.x == 0)
+    n->next = head;
+    head    = n;
+}
+
+void pool::push_onto_free_list(memblk::value_type *ptr)
+{
+    node *n = reinterpret_cast<node *>(ptr);
+    // CU_CHECK(cuMemcpyDtoD((CUdeviceptr)n->next, (CUdeviceptr)_head, sizeof(CUdeviceptr)));
+    // CU_CHECK(cuMemcpyDtoD((CUdeviceptr)&_head, (CUdeviceptr)&n, sizeof(CUdeviceptr)));
+    // n->next = _head;
+    // _head   = n;
+
+    push_onto_free_list_kernel<<<1, 1>>>(_head, n);
+    CU_CHECK(cuCtxSynchronize());
+}
+
 
 #endif // CUARENA_CUH
