@@ -330,12 +330,11 @@ arena::size_type arena::commit_memory(size_type n_bytes)
     return handle;
 }
 
-
-
-// A growing pool allocator with fixed size slots
-struct pool
+// A fixed size pool allocator with fixed size slots sitting on top of device memory
+struct device_pool
 {
-    using size_type = std::size_t;
+    using size_type  = std::size_t;
+    using value_type = std::byte;
 
     struct description
     {
@@ -344,40 +343,31 @@ struct pool
         size_type alignment;
     };
 
-    pool(CUcontext context, description info)
-        : _arena(context, info.capacity, info.alignment)
+    device_pool(void *d_buffer, description info)
+        : _d_buffer(reinterpret_cast<value_type *>(d_buffer))
+        , _capacity(info.capacity)
         , _slot_size(align_to(info.slot_size, info.alignment))
         , _head(nullptr)
     {
         assert(_slot_size >= sizeof(node) && "slot size too small");
 
-        memblk blk = _arena.allocate(info.capacity);
-        // clear();
-        // push_range_onto_free_list(blk.data(), blk.size() / _slot_size);
-        push_range_onto_free_list(blk);
+        push_range_onto_free_list({ _d_buffer, _capacity });
     }
 
-    [[nodiscard]] memblk allocate()
+    [[nodiscard]] constexpr memblk allocate()
     {
         node *old_head = _head;
         if (old_head == nullptr) {
-
-            // grow pool using arena
-            memblk blk = _arena.allocate(_slot_size); // TODO: what if we free and allocate instead of reallocating? Have option to fail on this event
-
-            // for (size_type i = 0; i < blk.size() / _slot_size; ++i) {
-            //     push_onto_free_list(blk.data() + i * _slot_size);
-            // }
-            // push_range_onto_free_list(blk.data(), blk.size() / _slot_size);
-            push_range_onto_free_list(blk);
+            assert(0 && "Pool allocator out of memory");
+            return { nullptr, 0 };
         }
 
         _head = _head->next;
 
-        return { reinterpret_cast<memblk::value_type *>(old_head), _slot_size };
+        return { reinterpret_cast<value_type *>(old_head), _slot_size };
     }
 
-    void deallocate(memblk blk)
+    constexpr void deallocate(memblk blk)
     {
         assert(blk.size() == _slot_size && "invalid block size");
         assert(owns(blk) && "block not owned by pool");
@@ -385,17 +375,14 @@ struct pool
         push_onto_free_list(blk.data());
     }
 
-    bool owns(memblk blk)
+    [[nodiscard]] constexpr bool owns(memblk blk)
     {
-        return _arena.owns(blk);
+        return blk.data() >= _d_buffer && blk.data() < _d_buffer + _capacity;
     }
 
-    void clear()
+    constexpr void clear()
     {
-        // for (size_type i = 0; i < slot_count(); ++i) {
-        //     push_onto_free_list(_arena.data() + i * _slot_size);
-        // }
-        push_range_onto_free_list({ _arena.data(), _arena.size_bytes() });
+        push_range_onto_free_list({ _d_buffer, _capacity });
     }
 
     struct node
@@ -404,57 +391,31 @@ struct pool
     };
 
 private:
-    size_type slot_count()
+    constexpr size_type slot_count()
     {
-        return _arena.size_bytes() / _slot_size;
+        return _capacity / _slot_size;
     }
 
-    void push_range_onto_free_list(memblk blk)
+    constexpr void push_range_onto_free_list(memblk blk)
     {
-        size_type count         = blk.size() / _slot_size;
-        memblk::value_type *ptr = blk.data();
+        size_type count = blk.size() / _slot_size;
+        value_type *ptr = blk.data();
         for (size_type i = 0; i < count; ++i) {
             push_onto_free_list(ptr + i * _slot_size);
         }
     }
 
-    void push_onto_free_list(memblk::value_type *ptr);
-    // {
-    //     node *n = reinterpret_cast<node *>(ptr);
-    //     // CU_CHECK(cuMemcpyDtoD((CUdeviceptr)n->next, (CUdeviceptr)_head, sizeof(CUdeviceptr)));
-    //     // CU_CHECK(cuMemcpyDtoD((CUdeviceptr)&_head, (CUdeviceptr)&n, sizeof(CUdeviceptr)));
-    //     // n->next = _head;
-    //     // _head   = n;
-    //
-    //     push_onto_free_list_kernel<<<1, 1>>>(_head, n);
-    // }
+    void push_onto_free_list(value_type *ptr)
+    {
+        node *n = reinterpret_cast<node *>(ptr);
+        n->next = _head;
+        _head   = n;
+    }
 
-    arena _arena;
+    value_type *_d_buffer;
+    size_type _capacity;
     size_type _slot_size;
     node *_head;
 };
-// struct pool;
-
-// struct pool::node;
-
-__global__ void push_onto_free_list_kernel(pool::node *head, pool::node *n)
-{
-    // if (threadIdx.x == 0 && blockIdx.x == 0)
-    n->next = head;
-    head    = n;
-}
-
-void pool::push_onto_free_list(memblk::value_type *ptr)
-{
-    node *n = reinterpret_cast<node *>(ptr);
-    // CU_CHECK(cuMemcpyDtoD((CUdeviceptr)n->next, (CUdeviceptr)_head, sizeof(CUdeviceptr)));
-    // CU_CHECK(cuMemcpyDtoD((CUdeviceptr)&_head, (CUdeviceptr)&n, sizeof(CUdeviceptr)));
-    // n->next = _head;
-    // _head   = n;
-
-    push_onto_free_list_kernel<<<1, 1>>>(_head, n);
-    CU_CHECK(cuCtxSynchronize());
-}
-
 
 #endif // CUARENA_CUH
