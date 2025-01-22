@@ -1,7 +1,6 @@
 
 add_library(cuarena INTERFACE "cuarena.cuh")
 set_target_properties(cuarena PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
-# set_target_properties(cuarena PROPERTIES CUDA_ARCHITECTURES 61)
 
 # target_include_directories(
 #     cuarena INTERFACE $<BUILD_INTERFACE:${INCLUDE_PATH}>

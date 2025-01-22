@@ -1,7 +1,11 @@
 
 cmake_minimum_required (VERSION 3.24)
 
-project(cuarena LANGUAGES CUDA CXX)
+project(
+    cuarena
+    VERSION 0.0.1
+    DESCRIPTION "CUDA Arena allocator"
+    LANGUAGES CXX CUDA)
 
 if (CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
     
@@ -17,7 +21,17 @@ if (CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
   # Let's nicely support folders in IDEs
   set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
+  # Include example programs
+  add_subdirectory(examples)
+
+  # Testing only available if this is the main project.
+  # Note this needs to be done in the main CMakeLists
+  # since it calls enable_testing, which must be in the
+  # main CMakeLists.
+  include(CTest)
+
+  add_subdirectory(tests)
 endif()
 
-add_subdirectory(cuarena)
+add_subdirectory(source)
 

@@ -1,16 +1,40 @@
+set(INCLUDE_PATH "${PROJECT_SOURCE_DIR}/include")
+set(LIB_PATH "${INCLUDE_PATH}/cuarena")
 
-add_library(cuarena "cuarena.cuh")
-set_target_properties(cuarena PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
-set_target_properties(cuarena PROPERTIES CUDA_ARCHITECTURES 61)
+set(headers 
+    "${LIB_PATH}/cuarena.hpp"
+)
+
+add_library(cuarena ${headers})
+
+target_sources(cuarena PRIVATE cuarena.cpp)
 
 target_include_directories(
     cuarena PUBLIC $<BUILD_INTERFACE:${INCLUDE_PATH}>
                    $<INSTALL_INTERFACE:include/${PROJECT_NAME}-${PROJECT_VERSION}>
 )
 
-target_compile_features(cuarena PUBLIC cxx_std_20 cuda_std_20)
+# C++20 is required for all users of the library
+target_compile_features(cuarena PUBLIC cxx_std_20 cuda_std_20) # TODO: could be lower
 
 find_package(CUDAToolkit REQUIRED)
 
 target_link_libraries(cuarena PRIVATE CUDA::cuda_driver)
 
+include(FetchContent)
+FetchContent_Declare(
+  PackageProject
+  GIT_REPOSITORY https://github.com/TheLartians/PackageProject.cmake.git
+  GIT_TAG v1.12.0
+)
+FetchContent_MakeAvailable(PackageProject)
+
+packageProject(
+    NAME ${PROJECT_NAME}
+    VERSION ${PROJECT_VERSION}
+    NAMESPACE ${PROJECT_NAME}
+    BINARY_DIR ${PROJECT_BINARY_DIR}
+    INCLUDE_DIR ${INCLUDE_PATH}
+    INCLUDE_DESTINATION include/${PROJECT_NAME}-${PROJECT_VERSION}
+    COMPATIBILITY SameMajorVersion
+)
