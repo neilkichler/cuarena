@@ -1,2 +1,2 @@
-add_subdirectory(basic)
-add_subdirectory(runtime)
+add_subdirectory(driver_api)
+add_subdirectory(runtime_api)
