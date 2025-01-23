@@ -28,16 +28,12 @@ int main()
     cudaSetDevice(0);
     CUcontext ctx;
     CU_CHECK(cuCtxGetCurrent(&ctx));
-    // printf("device is : %d\n", dev);
 
     constexpr int n = 1024;
     int h_xs[n];
 
     auto n_bytes = sizeof(int) * n;
-    // arena a(dev, 8_GB);
-    arena a(ctx, 8_GB);
-    // arena a;
-
+    arena a(ctx);
     memblk buffer = a.allocate(n_bytes);
     int *d_xs     = new (buffer.data()) int[n];
 
