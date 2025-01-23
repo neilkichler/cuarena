@@ -56,9 +56,10 @@ struct arena
     using size_type  = memblk::size_type;
     using byte_type  = memblk::value_type;
     using properties = CUmemAllocationProp;
+    using device_ctx = CUcontext;
 
-    arena(CUcontext context);
-    arena(CUcontext context, size_type capacity, size_type alignment = 16);
+    arena(device_ctx context);
+    arena(device_ctx context, size_type capacity, size_type alignment = 16);
     arena(const arena &other)                = delete;
     arena &operator=(const arena &other)     = delete;
     arena(arena &&other) noexcept            = default;
