@@ -26,7 +26,8 @@ align_to(std::size_t p, std::size_t align) noexcept
 
 arena::arena(CUcontext context)
     : arena(context, DEFAULT_RESERVED_SIZE)
-{ }
+{
+}
 
 arena::arena(CUcontext context, size_type capacity, size_type alignment)
     : _alignment(alignment)
@@ -72,7 +73,6 @@ memblk arena::allocate(size_type n_bytes)
     // out of memory? -> commit
     if (_alloc_position + alloc_size > _commit_position) {
         size_type handle = commit_memory(alloc_size);
-        // _alloc_info.push_back({ handle, alloc_size });
     }
 
     byte_type *addr = &_start_address[_alloc_position];
@@ -201,4 +201,3 @@ static_assert(!std::is_copy_constructible_v<arena>);
 static_assert(!std::is_copy_assignable_v<arena>);
 static_assert(std::is_move_constructible_v<arena>);
 static_assert(std::is_move_assignable_v<arena>);
-
