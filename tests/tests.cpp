@@ -50,8 +50,17 @@ int main()
     freed_size = a.pop(buffer4); // buffer 4 sits on top, so memory is freed
     expect(eq(freed_size, buffer4.size()));
 
-    memblk buffer5 = a.allocate(n_bytes);
-    expect(eq(buffer5.data(), buffer4.data()));
+    auto prev_size = a.allocated_size();
+    {
+        checkpoint(a);
+
+        memblk buffer5 = a.allocate(n_bytes);
+        expect(eq(buffer5.data(), buffer4.data()));
+        expect(gt(a.allocated_size(), prev_size));
+        expect(eq(a.allocated_size(), prev_size + buffer5.size()));
+    }
+
+    expect(eq(a.allocated_size(), prev_size));
 
     CU_CHECK(cuDevicePrimaryCtxRelease(0));
 

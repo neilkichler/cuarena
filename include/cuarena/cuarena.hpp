@@ -1,5 +1,7 @@
-#ifndef CUARENA_CUH
-#define CUARENA_CUH
+#ifndef CUARENA_CUARENA_H
+#define CUARENA_CUARENA_H
+
+#include "defer.hpp"
 
 #include <cuda.h>
 #include <cuda_runtime.h>
@@ -8,6 +10,11 @@
 #include <cstddef>
 #include <cstdio>
 #include <vector>
+
+#define CHECKPOINT_1(x, y) x##y
+#define CHECKPOINT_2(x, y) CHECKPOINT_1(x, y)
+#define CHECKPOINT_3(x)    CHECKPOINT_2(x, __COUNTER__)
+#define checkpoint(arena)  auto CHECKPOINT_3(_cuarena_) = arena.checkpoint_();
 
 namespace cu
 {
@@ -94,6 +101,18 @@ struct arena
     // Points at the start of the contiguous virtual memory.
     [[nodiscard]] constexpr byte_type *data() noexcept { return _start_address; }
 
+    [[nodiscard]] auto checkpoint_()
+    {
+        assert(!checkpoint_set && "cuarena: checkpoint was already set");
+        set_checkpoint(true);
+        return finally([&, a = _alloc_position] {
+            set_checkpoint(false);
+            _alloc_position = a;
+        });
+    }
+
+    [[nodiscard]] auto allocated_size() const noexcept { return _alloc_position; }
+
 private:
     static constexpr auto DEFAULT_RESERVED_SIZE = 8_GB;
 
@@ -104,6 +123,17 @@ private:
     size_type _minimum_commit_size {};
     size_type _reserved_size {};
     properties _prop {};
+
+#ifndef NDEBUG
+    bool checkpoint_set = false;
+#endif
+
+    void set_checkpoint([[maybe_unused]] bool val)
+    {
+#ifndef NDEBUG
+        checkpoint_set = val;
+#endif
+    }
 
     struct alloc_info
     {
@@ -130,4 +160,4 @@ private:
 };
 
 } // namespace cu
-#endif // CUARENA_CUH
+#endif // CUARENA_CUARENA_H
