@@ -24,6 +24,8 @@ __global__ void kernel(int *xs) { xs[0] = 42; }
 
 int main()
 {
+    using namespace cu;
+
     CUcontext ctx;
     CUdevice dev;
 

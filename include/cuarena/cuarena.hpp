@@ -9,6 +9,9 @@
 #include <cstdio>
 #include <vector>
 
+namespace cu
+{
+
 constexpr std::size_t operator""_KB(unsigned long long n)
 {
     const auto base_two_kilobyte = n << 10;
@@ -126,4 +129,5 @@ private:
     static void debug_memset(void *address, int val, size_type size);
 };
 
+} // namespace cu
 #endif // CUARENA_CUH

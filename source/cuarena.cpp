@@ -18,6 +18,9 @@
         }                                                                                         \
     } while (0)
 
+namespace cu
+{
+
 constexpr std::size_t
 align_to(std::size_t p, std::size_t align) noexcept
 {
@@ -213,3 +216,5 @@ static_assert(!std::is_copy_constructible_v<arena>);
 static_assert(!std::is_copy_assignable_v<arena>);
 static_assert(std::is_move_constructible_v<arena>);
 static_assert(std::is_move_assignable_v<arena>);
+
+} // namespace cu

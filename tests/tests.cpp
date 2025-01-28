@@ -23,6 +23,7 @@
 int main()
 {
     using namespace boost::ut;
+    using namespace cu;
 
     CUcontext ctx;
     CUdevice dev;

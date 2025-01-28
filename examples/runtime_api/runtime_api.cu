@@ -24,6 +24,7 @@ __global__ void kernel(int *xs) { xs[0] = 42; }
 
 int main()
 {
+    using namespace cu;
     cudaSetDevice(0);
 
     constexpr int n = 1024;
