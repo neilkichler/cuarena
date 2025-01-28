@@ -14,7 +14,7 @@
 #define CHECKPOINT_1(x, y) x##y
 #define CHECKPOINT_2(x, y) CHECKPOINT_1(x, y)
 #define CHECKPOINT_3(x)    CHECKPOINT_2(x, __COUNTER__)
-#define checkpoint(arena)  auto CHECKPOINT_3(_cuarena_) = arena.checkpoint_();
+#define checkpoint(arena)  auto CHECKPOINT_3(_cuarena_) = (arena).checkpoint_();
 
 namespace cu
 {
