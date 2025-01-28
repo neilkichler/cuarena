@@ -62,6 +62,8 @@ int main()
 
     expect(eq(a.allocated_size(), prev_size));
 
+    int *i_array = cu::make_array<int>(a, 10);
+
     CU_CHECK(cuDevicePrimaryCtxRelease(0));
 
     return 0;

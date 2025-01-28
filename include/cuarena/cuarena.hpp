@@ -159,5 +159,12 @@ private:
     static void debug_memset(void *address, int val, size_type size);
 };
 
+template<typename T>
+[[nodiscard]] T *make_array(arena &a, std::size_t n) noexcept
+{
+    // TODO: in C++23 we might want to use: start_lifetime_as
+    return new (a.allocate(n * sizeof(T)).data()) T[n];
+}
+
 } // namespace cu
 #endif // CUARENA_CUARENA_H
