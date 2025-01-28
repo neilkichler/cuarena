@@ -58,6 +58,7 @@ struct arena
     using properties = CUmemAllocationProp;
     using device_ctx = CUcontext;
 
+    arena(); // uses the current context of the calling thread
     arena(device_ctx context);
     arena(device_ctx context, size_type capacity, size_type alignment = 16);
     arena(const arena &other)                = delete;
@@ -117,6 +118,9 @@ private:
     bool release_memory();
 
     byte_type *current_position();
+
+    // only used for initializing the arena context if no context was passed into the constructor
+    device_ctx thread_current_context() const;
 
     // memset only for debug build
     static void debug_memset(void *address, int val, size_type size);

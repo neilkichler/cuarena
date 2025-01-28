@@ -24,6 +24,18 @@ align_to(std::size_t p, std::size_t align) noexcept
     return (p + align - 1) & (~(align - 1));
 }
 
+arena::device_ctx arena::thread_current_context() const
+{
+    CUcontext ctx;
+    CU_CHECK(cuCtxGetCurrent(&ctx));
+    return ctx;
+}
+
+arena::arena()
+    : arena(thread_current_context(), DEFAULT_RESERVED_SIZE)
+{
+}
+
 arena::arena(CUcontext context)
     : arena(context, DEFAULT_RESERVED_SIZE)
 {

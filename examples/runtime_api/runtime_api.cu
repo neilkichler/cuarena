@@ -24,22 +24,18 @@ __global__ void kernel(int *xs) { xs[0] = 42; }
 
 int main()
 {
-
     cudaSetDevice(0);
-    CUcontext ctx;
-    CU_CHECK(cuCtxGetCurrent(&ctx));
 
     constexpr int n = 1024;
     int h_xs[n];
 
     auto n_bytes = sizeof(int) * n;
-    arena a(ctx);
+
+    arena a;
     memblk buffer = a.allocate(n_bytes);
     int *d_xs     = new (buffer.data()) int[n];
 
     kernel<<<1, 1>>>(d_xs);
-    cudaDeviceSynchronize();
-
     cudaMemcpy(h_xs, d_xs, n_bytes, cudaMemcpyDeviceToHost);
     cudaDeviceSynchronize();
     printf("h_xs[0] = %d\n", h_xs[0]);

@@ -42,9 +42,8 @@ int main()
     int *d_xs     = new (buffer.data()) int[n];
 
     kernel<<<1, 1>>>(d_xs);
-    CU_CHECK(cuCtxSynchronize());
-
     CU_CHECK(cuMemcpyDtoH(h_xs, (CUdeviceptr) d_xs, n_bytes));
+    CU_CHECK(cuCtxSynchronize());
 
     printf("xs[0] = %d\n", h_xs[0]);
 
