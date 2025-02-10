@@ -1,0 +1,50 @@
+name: Linux GPU
+
+on:
+  push:
+    branches: '*'
+  pull_request:
+    branches: '*'
+
+jobs:
+  build:
+
+    runs-on: [self-hosted, Linux, GPU]
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: gpu info
+      run: nvidia-smi --query-gpu=index,name,memory.used,memory.total --format=csv
+
+    - name: nvidia compiler info
+      run: |
+        module purge
+        module load CUDA/12.6.1
+        nvcc --version
+
+    - name: setup cmake
+      run: |
+          module purge
+          module load GCC/13.3.0 CUDA/12.6.1 CMake Ninja
+          cmake --preset linux-gcc-debug-sanitizer-ub-coverage
+
+    - name: build
+      run: |
+        module purge
+        module load GCC/13.3.0 CUDA/12.6.1
+        cmake --build --preset debug
+
+    - name: run ctest
+      run: |
+        module purge
+        module load GCC/13.3.0 CUDA/12.6.1
+        ctest --preset debug
+
+    - name: run checks
+      run: |
+        module purge
+        module load GCC/13.3.0 CUDA/12.3.0
+        ./tools/memcheck.sh ./build/tests/tests
+        ./tools/racecheck.sh ./build/tests/tests
+        ./tools/synccheck.sh ./build/tests/tests
