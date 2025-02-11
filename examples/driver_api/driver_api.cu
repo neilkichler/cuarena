@@ -43,6 +43,12 @@ int main()
     memblk buffer = a.allocate(n_bytes);
     int *d_xs     = new (buffer.data()) int[n];
 
+
+    {
+        checkpoint(a);
+        memblk buffer2 = a.allocate(n_bytes);
+    }
+
     kernel<<<1, 1>>>(d_xs);
     CU_CHECK(cuMemcpyDtoH(h_xs, (CUdeviceptr) d_xs, n_bytes));
     CU_CHECK(cuCtxSynchronize());

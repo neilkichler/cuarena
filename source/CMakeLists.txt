@@ -14,8 +14,8 @@ target_include_directories(
                    $<INSTALL_INTERFACE:include/${PROJECT_NAME}-${PROJECT_VERSION}>
 )
 
-# C++20 is required for all users of the library
-target_compile_features(cuarena PUBLIC cxx_std_20 cuda_std_20) # TODO: could be lower
+# C++17 is required for all users of the library
+target_compile_features(cuarena PUBLIC cxx_std_17 cuda_std_17)
 
 find_package(CUDAToolkit REQUIRED)
 

@@ -7,7 +7,7 @@ set_target_properties(cuarena PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
 #                       $<INSTALL_INTERFACE:include/${PROJECT_NAME}-${PROJECT_VERSION}>
 # )
 
-target_compile_features(cuarena INTERFACE cxx_std_20 cuda_std_20)
+target_compile_features(cuarena INTERFACE cxx_std_17 cuda_std_17)
 
 find_package(CUDAToolkit REQUIRED)
 
