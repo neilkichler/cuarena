@@ -1,6 +1,6 @@
 <h1 align='center'>CuArena</h1>
 
-Since [CUDA 10.2 virtual memory](https://developer.nvidia.com/blog/introducing-low-level-gpu-virtual-memory-management/) is supported on CUDA devices via the [Driver API](https://docs.nvidia.com/cuda/cuda-driver-api/group__CUDA__VA.html).
+Since CUDA 10.2, virtual memory is supported on CUDA devices via the [Driver API](https://docs.nvidia.com/cuda/cuda-driver-api/group__CUDA__VA.html) (see Nvidia's [blog post](https://developer.nvidia.com/blog/introducing-low-level-gpu-virtual-memory-management/)).
 
 The simplest and most useful thing to built upon it is probably an arena allocator.
 ## Minimal Example
