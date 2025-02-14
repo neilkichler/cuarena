@@ -16,7 +16,7 @@ int main()
     constexpr int n = 1024;
     {
         arena a; // reserves 8 GiB by default
-        memblk buffer = a.allocate(n_bytes * sizeof(float)); // bumps arena pointer (might commit memory)
+        memblk buffer = a.allocate(n_bytes * sizeof(float)); // bumps arena pointer (may commit memory)
     
         // a memblk is a { std::byte *start, std::size_t length } struct
         // ...
