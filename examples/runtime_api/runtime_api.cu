@@ -2,22 +2,15 @@
 
 #include <cstdio>
 
-#define CU_CHECK(x)                                                                               \
-    do {                                                                                          \
-        CUresult err = x;                                                                         \
-        if (err != CUDA_SUCCESS) {                                                                \
-            const char *error_string;                                                             \
-            if (cuGetErrorString(err, &error_string) == CUDA_ERROR_INVALID_VALUE) {               \
-                error_string = "Unknown error";                                                   \
-            }                                                                                     \
-            const char *error_name;                                                               \
-            if (cuGetErrorName(err, &error_name) == CUDA_ERROR_INVALID_VALUE) {                   \
-                error_name = "CUDA_ERROR_UNKNOWN";                                                \
-            }                                                                                     \
-            fprintf(stderr, "CUDA Driver API error in %s at %s:%d: %s (%s = %d)\n", __FUNCTION__, \
-                    __FILE__, __LINE__, error_string, error_name, err);                           \
-            abort();                                                                              \
-        }                                                                                         \
+#define CUDA_CHECK(x)                                                                \
+    do {                                                                             \
+        cudaError_t err = x;                                                         \
+        if (err != cudaSuccess) {                                                    \
+            fprintf(stderr, "CUDA error in %s at %s:%d: %s (%s=%d)\n", __FUNCTION__, \
+                    __FILE__, __LINE__, cudaGetErrorString(err),                     \
+                    cudaGetErrorName(err), err);                                     \
+            abort();                                                                 \
+        }                                                                            \
     } while (0)
 
 __global__ void kernel(int *xs) { xs[0] = 42; }
@@ -25,7 +18,7 @@ __global__ void kernel(int *xs) { xs[0] = 42; }
 int main()
 {
     using namespace cu;
-    cudaSetDevice(0);
+    CUDA_CHECK(cudaSetDevice(0));
 
     constexpr int n = 1024;
     int h_xs[n];
@@ -37,8 +30,8 @@ int main()
     int *d_xs     = new (buffer.data()) int[n];
 
     kernel<<<1, 1>>>(d_xs);
-    cudaMemcpy(h_xs, d_xs, n_bytes, cudaMemcpyDeviceToHost);
-    cudaDeviceSynchronize();
+    CUDA_CHECK(cudaMemcpy(h_xs, d_xs, n_bytes, cudaMemcpyDeviceToHost));
+    CUDA_CHECK(cudaDeviceSynchronize());
     printf("h_xs[0] = %d\n", h_xs[0]);
     return 0;
 }
