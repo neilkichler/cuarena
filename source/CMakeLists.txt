@@ -3,6 +3,7 @@ set(LIB_PATH "${INCLUDE_PATH}/cuarena")
 
 set(headers 
     "${LIB_PATH}/cuarena.hpp"
+    "${LIB_PATH}/defer.hpp"
 )
 
 add_library(cuarena ${headers})
