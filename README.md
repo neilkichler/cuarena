@@ -55,7 +55,7 @@ include(FetchContent)
 FetchContent_Declare(
   cuinterval
   GIT_REPOSITORY git@github.com:neilkichler/cuarena.git
-  GIT_TAG main
+  GIT_TAG v0.1.0
 )
 FetchContent_MakeAvailable(cuarena)
 ```
